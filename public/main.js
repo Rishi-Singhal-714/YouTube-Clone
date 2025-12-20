@@ -1,7 +1,10 @@
+// API base URL
+const API_BASE = '/api/videos';
+
 // Main page functionality
 document.addEventListener('DOMContentLoaded', async () => {
     // Load popular videos on homepage
-    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+    if (window.location.pathname === '/' || window.location.pathname.endsWith('index.html')) {
         await loadPopularVideos();
     }
     
@@ -24,27 +27,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadPopularVideos() {
     try {
-        const response = await fetch('/api/popular');
-        const videos = await response.json();
+        const response = await fetch(`${API_BASE}/popular`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to load videos');
+        }
         
         const videoGrid = document.getElementById('videoGrid');
         if (videoGrid) {
-            videoGrid.innerHTML = videos.map(video => `
+            videoGrid.innerHTML = data.videos.map(video => `
                 <div class="video-card" onclick="window.location.href='watch.html?v=${video.id}'">
                     <div class="video-thumbnail">
-                        <img src="${video.thumbnail}" alt="${video.title}">
-                        <span class="video-duration">${formatDuration(video.duration)}</span>
+                        <img src="${video.thumbnail}" alt="${video.title}" onerror="this.src='https://via.placeholder.com/320x180?text=No+Thumbnail'">
+                        ${video.duration ? `<span class="video-duration">${formatDuration(video.duration)}</span>` : ''}
                     </div>
                     <div class="video-info">
                         <h3>${video.title}</h3>
                         <p>${video.channelTitle}</p>
-                        <p>${parseInt(video.viewCount).toLocaleString()} views • ${timeAgo(new Date(video.publishedAt))}</p>
+                        <p>${video.viewCount ? parseInt(video.viewCount).toLocaleString() + ' views • ' : ''}${video.publishedAt ? timeAgo(new Date(video.publishedAt)) : ''}</p>
                     </div>
                 </div>
             `).join('');
         }
     } catch (error) {
         console.error('Error loading popular videos:', error);
+        const videoGrid = document.getElementById('videoGrid');
+        if (videoGrid) {
+            videoGrid.innerHTML = `
+                <div class="error-message">
+                    <p>Failed to load videos. Please try again later.</p>
+                    <button onclick="loadPopularVideos()" class="btn btn-primary">Retry</button>
+                </div>
+            `;
+        }
     }
 }
 
@@ -58,7 +74,7 @@ async function performSearch() {
     const token = localStorage.getItem('token');
     if (token) {
         try {
-            await fetch('/api/history', {
+            await fetch(`${API_BASE}/history`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -77,12 +93,16 @@ async function performSearch() {
         }
     }
     
-    // Redirect to search results
-    window.location.href = `search.html?q=${encodeURIComponent(query)}`;
+    // Redirect to search results (you'll need to create search.html)
+    // For now, alert or implement search results display
+    alert(`Searching for: ${query}`);
+    // window.location.href = `search.html?q=${encodeURIComponent(query)}`;
 }
 
 // Utility functions
 function formatDuration(duration) {
+    if (!duration) return '';
+    
     // Parse ISO 8601 duration format
     const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
     if (!match) return '';
@@ -100,7 +120,9 @@ function formatDuration(duration) {
 }
 
 function timeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
+    if (!date) return '';
+    
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
     
     let interval = Math.floor(seconds / 31536000);
     if (interval >= 1) return interval + ' year' + (interval > 1 ? 's' : '') + ' ago';
@@ -119,3 +141,11 @@ function timeAgo(date) {
     
     return 'just now';
 }
+
+// Export for use in other files
+window.ytClone = {
+    loadPopularVideos,
+    performSearch,
+    formatDuration,
+    timeAgo
+};
