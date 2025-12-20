@@ -1,5 +1,5 @@
 {
-  "name": "yt-clone",
+  "name": "YouTube-clone",
   "version": "1.0.0",
   "description": "YouTube Clone with YouTube API",
   "main": "api/index.js",
