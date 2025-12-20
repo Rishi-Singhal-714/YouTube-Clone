@@ -3,6 +3,7 @@ class Auth {
     constructor() {
         this.token = localStorage.getItem('token');
         this.user = JSON.parse(localStorage.getItem('user') || 'null');
+        this.apiBase = '/api';
     }
 
     isAuthenticated() {
@@ -18,7 +19,35 @@ class Auth {
         localStorage.removeItem('user');
         this.token = null;
         this.user = null;
-        window.location.href = 'index.html';
+        window.location.href = '/';
+    }
+
+    async checkAuth() {
+        if (!this.token) return false;
+        
+        try {
+            const response = await fetch(`${this.apiBase}/auth/me`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+            
+            if (!response.ok) {
+                this.logout();
+                return false;
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                this.user = data.user;
+                localStorage.setItem('user', JSON.stringify(data.user));
+                return true;
+            }
+        } catch (error) {
+            console.error('Auth check failed:', error);
+        }
+        
+        return false;
     }
 
     updateAuthUI() {
@@ -56,7 +85,8 @@ class Auth {
 const auth = new Auth();
 
 // Update UI on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await auth.checkAuth();
     auth.updateAuthUI();
     
     // Add event listener for logout if button exists
